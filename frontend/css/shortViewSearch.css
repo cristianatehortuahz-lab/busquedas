@@ -1,0 +1,115 @@
+/* ============================================================================
+   🎨 HUB VIVO - Estilos para Vistas Cortas (Short Views)
+   ============================================================================
+   @file shortViewSearch.css
+   @description Estilos base para la representación compacta (tarjetas/cards)
+                de programas, organizaciones y laboratorios en la UI.
+   
+   ⚠️ NOTA PARA DESARROLLADORES:
+   - NO usar !important en las dimensiones de `.org-img` ni `.org-desc`.
+   - Permite que los dashboards externos apliquen sus propias dimensiones.
+   ============================================================================ */
+
+/* --- Programas --- */
+div#programIndividual {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 1px;
+    margin: 5px 1px;
+    justify-content: center;
+    width: 100%;
+}
+
+/* --- Organizaciones --- */
+div#organizationIndividual {
+    display: flex;
+    flex-direction: row;
+    border-bottom: 1px solid #eee;
+    padding: 25px 0;
+    margin: 0;
+    align-items: center;
+    width: 100%;
+}
+
+/* --- Laboratorios --- */
+ul.searchhits-Lab div.individual {
+    display: flex;
+    flex-direction: row;
+    border-bottom: 1px solid #ddd;
+    padding: 10px 1px;
+    margin: 5px 1px;
+    justify-content: center;
+}
+
+/* --- Títulos de enlaces en descripciones --- */
+div.org-desc h1 a, div.org-desc h1 span.ignored-person-name, div.org-desc h2 a, div.org-desc h3 a, div#programIndividual h3 a {
+    font-size: 18px;
+    font-weight: 500;
+    color: #24568E;
+    text-decoration: none;
+}
+
+div.org-desc h1 a:hover, div.org-desc h2 a:hover, div.org-desc h3 a:hover, div#programIndividual h3 a:hover {
+    text-decoration: underline;
+}
+
+/* --- Búsqueda avanzada y lista general --- */
+.advancedSearchForm .form-button, .searchhits li {
+    padding: 0;
+    padding-bottom: unset;
+    border: none;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+div#programDescription {
+    padding: 1px 1px 1px 10px;
+}
+
+ul.js-search-hits {
+    padding-left: 0px;
+}
+
+/* --- Imagen del perfil (SIN !important en dimensiones) ---
+   El dashboard v23 controla el tamaño dentro de .hub-cg-list.
+   Estas reglas solo aplican fuera de ese contexto. */
+div.org-img {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+div.org-img img {
+    object-fit: cover;
+    border-radius: 8px;
+    padding: 0;
+    background: transparent;
+}
+
+div#organizationIndividual:hover .org-img img {
+    transform: scale(1.03);
+}
+
+/* --- Descripción del perfil --- */
+div.org-desc {
+    flex: 1;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+    min-width: 0;
+}
+
+/* --- Contenedor del navegador de grupos --- */
+.contentsBrowseGroup-top-box {
+    width: 90%;
+    margin: auto;
+}
+
+/* --- Cuerpo de datos de la persona --- */
+.shortview_person-data div.person-body {
+    flex-direction: column;
+}

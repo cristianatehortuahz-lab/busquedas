@@ -1,0 +1,199 @@
+<!--
+  ============================================================================
+  🌐 HUB VIVO - Configuración de Servlets de Búsqueda (Fragmento web.xml)
+  ============================================================================
+  @file web-xml-search-servlets.xml
+  @description Este archivo define las 5 instancias del servlet `PagedSearchControllerFaceted`
+               y el servlet REST `UrAutocompleteController`.
+
+  ⚠️ INSTRUCCIONES DE DESPLIEGUE:
+  - Este archivo es una referencia XML. NO se despliega directamente como un archivo independiente.
+  - Su contenido debe copiarse e insertarse dentro de la etiqueta raíz `<web-app>` del 
+    `web.xml` principal de Tomcat (`/opt/tomcat/webapps/HUBvivo115/WEB-INF/web.xml`).
+  
+  ⚙️ PARÁMETROS DE INICIALIZACIÓN (`init-param`):
+  - `template-name`: Nombre del archivo FreeMarker (.ftl) a renderizar en la vista.
+  - `limit-class`: Filtro ontológico enviado a Solr (solo trae instancias de estas clases URI).
+  - `shortview-class`: Mapeo para seleccionar la vista en tarjeta corta.
+  - `facet-N-name`: Nombre EXACTO de la columna indexada en Solr (`schema.xml`).
+  - `facet-N-label`: Etiqueta pública mostrada en la barra lateral del navegador.
+  ============================================================================
+-->
+
+<!-- HUB-UR autocomplete controller -->
+<servlet>
+  <servlet-name>UrAutocompleteController</servlet-name>
+  <servlet-class>co.edu.urosario.researchhub.controller.search.UrAutocompleteController</servlet-class>
+</servlet>
+<servlet-mapping>
+  <servlet-name>UrAutocompleteController</servlet-name>
+  <url-pattern>/autocompleteUr</url-pattern>
+</servlet-mapping>
+
+<!-- ======================= FIND A SUPERVISOR ======================== -->
+<servlet>
+  <servlet-name>HUBURFindASupervisor</servlet-name>
+  <servlet-class>co.edu.urosario.researchhub.controller.search.PagedSearchControllerFaceted</servlet-class>
+  <init-param>
+    <param-name>template-name</param-name>
+    <param-value>search-find-a-supervisor.ftl</param-value>
+  </init-param>
+  <init-param>
+    <param-name>limit-class</param-name>
+    <param-value>http://research-hub.urosario.edu.co/ontology/vlocal#UREntity</param-value>
+    <param-value>http://xmlns.com/foaf/0.1/Person</param-value>
+  </init-param>
+  <init-param>
+    <param-name>shortview-class</param-name>
+    <param-value>http://research-hub.urosario.edu.co/ontology/vlocal#UREntity</param-value>
+    <param-value>http://xmlns.com/foaf/0.1/Person</param-value>
+  </init-param>
+  <!-- Prioridad 1: Escuelas/Facultades (Filtro institucional clave) -->
+  <init-param><param-name>facet-1-name</param-name><param-value>facet_academicDepartment</param-value></init-param>
+  <init-param><param-name>facet-1-label</param-name><param-value>Escuelas/Facultades</param-value></init-param>
+  <!-- Prioridad 2: Áreas de especialización -->
+  <init-param><param-name>facet-2-name</param-name><param-value>facet_expertiseAreas</param-value></init-param>
+  <init-param><param-name>facet-2-label</param-name><param-value>Áreas de especialización</param-value></init-param>
+  <!-- Prioridad 3: Research Focus -->
+  <init-param><param-name>facet-3-name</param-name><param-value>facet_researchFocus</param-value></init-param>
+  <init-param><param-name>facet-3-label</param-name><param-value>Research Focus</param-value></init-param>
+  <!-- Prioridad 4: Nivel -->
+  <init-param><param-name>facet-4-name</param-name><param-value>facet_level</param-value></init-param>
+  <init-param><param-name>facet-4-label</param-name><param-value>Nivel</param-value></init-param>
+  <!-- Prioridad 5: Title / Cargo -->
+  <init-param><param-name>facet-5-name</param-name><param-value>facet_preferredTitle</param-value></init-param>
+  <init-param><param-name>facet-5-label</param-name><param-value>Title</param-value></init-param>
+</servlet>
+<servlet-mapping>
+  <servlet-name>HUBURFindASupervisor</servlet-name>
+  <url-pattern>/find-a-supervisor/*</url-pattern>
+</servlet-mapping>
+
+<!-- ================= FIND A PARTNER ================ -->
+<servlet>
+  <servlet-name>HUBURFindAPartner</servlet-name>
+  <servlet-class>co.edu.urosario.researchhub.controller.search.PagedSearchControllerFaceted</servlet-class>
+  <init-param>
+    <param-name>template-name</param-name>
+    <param-value>search-find-a-partner.ftl</param-value>
+  </init-param>
+  <init-param>
+    <param-name>limit-class</param-name>
+    <param-value>http://research-hub.urosario.edu.co/ontology/vlocal#UREntity</param-value>
+    <param-value>http://xmlns.com/foaf/0.1/Person</param-value>
+  </init-param>
+  <init-param>
+    <param-name>shortview-class</param-name>
+    <param-value>http://research-hub.urosario.edu.co/ontology/vlocal#UREntity</param-value>
+    <param-value>http://xmlns.com/foaf/0.1/Person</param-value>
+  </init-param>
+  <!-- Prioridad 1: Escuelas/Facultades (Filtro institucional clave) -->
+  <init-param><param-name>facet-1-name</param-name><param-value>facet_academicDepartment</param-value></init-param>
+  <init-param><param-name>facet-1-label</param-name><param-value>Escuelas/Facultades</param-value></init-param>
+  <!-- Prioridad 2: Áreas de investigación -->
+  <init-param><param-name>facet-2-name</param-name><param-value>facet_expertiseAreas</param-value></init-param>
+  <init-param><param-name>facet-2-label</param-name><param-value>Áreas de investigación</param-value></init-param>
+  <!-- Prioridad 3: Participación como -->
+  <init-param><param-name>facet-3-name</param-name><param-value>facet_participationAs</param-value></init-param>
+  <init-param><param-name>facet-3-label</param-name><param-value>Participación como</param-value></init-param>
+</servlet>
+<servlet-mapping>
+  <servlet-name>HUBURFindAPartner</servlet-name>
+  <url-pattern>/find-a-partner/*</url-pattern>
+</servlet-mapping>
+
+<!-- =========== FIND A PROGRAM =============== -->
+<servlet>
+  <servlet-name>HUBURFindAProgram</servlet-name>
+  <servlet-class>co.edu.urosario.researchhub.controller.search.PagedSearchControllerFaceted</servlet-class>
+  <init-param>
+    <param-name>template-name</param-name>
+    <param-value>search-find-a-program.ftl</param-value>
+  </init-param>
+  <init-param>
+    <param-name>limit-class</param-name>
+    <param-value>http://vivoweb.org/ontology/core#Program</param-value>
+  </init-param>
+  <init-param>
+    <param-name>shortview-class</param-name>
+    <param-value>http://vivoweb.org/ontology/core#Program</param-value>
+  </init-param>
+  <!-- Prioridad 1: Escuelas-Facultades -->
+  <init-param><param-name>facet-1-name</param-name><param-value>facet_departamento</param-value></init-param>
+  <init-param><param-name>facet-1-label</param-name><param-value>Escuelas-Facultades</param-value></init-param>
+  <!-- Prioridad 2: Nivel académico -->
+  <init-param><param-name>facet-2-name</param-name><param-value>facet_level</param-value></init-param>
+  <init-param><param-name>facet-2-label</param-name><param-value>Nivel académico</param-value></init-param>
+  <!-- Prioridad 3: Modalidad del programa -->
+  <init-param><param-name>facet-3-name</param-name><param-value>facet_modality</param-value></init-param>
+  <init-param><param-name>facet-3-label</param-name><param-value>Modalidad del programa</param-value></init-param>
+</servlet>
+<servlet-mapping>
+  <servlet-name>HUBURFindAProgram</servlet-name>
+  <url-pattern>/find-a-program/*</url-pattern>
+</servlet-mapping>
+
+<!-- ======================= FIND A LAB ======================== -->
+<servlet>
+  <servlet-name>HUBURFindALab</servlet-name>
+  <servlet-class>co.edu.urosario.researchhub.controller.search.PagedSearchControllerFaceted</servlet-class>
+  <init-param>
+    <param-name>template-name</param-name>
+    <param-value>search-find-a-lab.ftl</param-value>
+  </init-param>
+  <init-param>
+    <param-name>limit-class</param-name>
+    <param-value>http://vivoweb.org/ontology/core#CoreLaboratory</param-value>
+  </init-param>
+  <init-param>
+    <param-name>shortview-class</param-name>
+    <param-value>http://vivoweb.org/ontology/core#CoreLaboratory</param-value>
+  </init-param>
+  <!-- Prioridad 1: Escuelas-Facultades -->
+  <init-param><param-name>facet-1-name</param-name><param-value>facet_academicDepartmentLab</param-value></init-param>
+  <init-param><param-name>facet-1-label</param-name><param-value>Escuelas-Facultades</param-value></init-param>
+  <!-- Prioridad 2: Title / Cargo -->
+  <init-param><param-name>facet-2-name</param-name><param-value>facet_preferredTitle</param-value></init-param>
+  <init-param><param-name>facet-2-label</param-name><param-value>Title</param-value></init-param>
+  <!-- Prioridad 3: Research Focus -->
+  <init-param><param-name>facet-3-name</param-name><param-value>facet_researchFocus</param-value></init-param>
+  <init-param><param-name>facet-3-label</param-name><param-value>Research Focus</param-value></init-param>
+</servlet>
+<servlet-mapping>
+  <servlet-name>HUBURFindALab</servlet-name>
+  <url-pattern>/find-a-lab/*</url-pattern>
+</servlet-mapping>
+
+<!-- =========== FIND A SPEAKER =============== -->
+<servlet>
+  <servlet-name>HUBURFindASpeaker</servlet-name>
+  <servlet-class>co.edu.urosario.researchhub.controller.search.PagedSearchControllerFaceted</servlet-class>
+  <init-param>
+    <param-name>template-name</param-name>
+    <param-value>search-find-a-speaker.ftl</param-value>
+  </init-param>
+  <init-param>
+    <param-name>limit-class</param-name>
+    <param-value>http://vivoweb.org/ontology/core#presentador</param-value>
+  </init-param>
+  <init-param>
+    <param-name>shortview-class</param-name>
+    <param-value>http://vivoweb.org/ontology/core#presentador</param-value>
+  </init-param>
+  <!-- Prioridad 1: Topic / Tema de Conferencia -->
+  <init-param><param-name>facet-1-name</param-name><param-value>facet_confTopic</param-value></init-param>
+  <init-param><param-name>facet-1-label</param-name><param-value>Conference Topic</param-value></init-param>
+  <!-- Prioridad 2: Organization / Unidad -->
+  <init-param><param-name>facet-2-name</param-name><param-value>facet_academicDepartment</param-value></init-param>
+  <init-param><param-name>facet-2-label</param-name><param-value>Organization</param-value></init-param>
+  <!-- Prioridad 3: Modality / Modalidad -->
+  <init-param><param-name>facet-3-name</param-name><param-value>facet_confModality</param-value></init-param>
+  <init-param><param-name>facet-3-label</param-name><param-value>Conference Modality</param-value></init-param>
+  <!-- Prioridad 4: Language / Idioma -->
+  <init-param><param-name>facet-4-name</param-name><param-value>facet_confLanguage</param-value></init-param>
+  <init-param><param-name>facet-4-label</param-name><param-value>Conference Language</param-value></init-param>
+</servlet>
+<servlet-mapping>
+  <servlet-name>HUBURFindASpeaker</servlet-name>
+  <url-pattern>/find-a-speaker/*</url-pattern>
+</servlet-mapping>

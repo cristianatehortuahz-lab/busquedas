@@ -1,0 +1,40 @@
+/* ============================================================================
+   🎨 HUB VIVO - Estilos Globales para Resultados Estructurados
+   ============================================================================
+   @file resultados_busqueda.css
+   @description Centraliza y unifica la apariencia tipográfica y los bordes 
+                separadores de las listas de publicaciones, tesis y patentes 
+                indexadas en VIVO.
+   ============================================================================ */
+
+ul.searchhits li {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+ul.searchhits li > a {
+    font-size: 18px;
+    font-weight: 500;
+    color: #24568E;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 3px;
+}
+
+ul.searchhits li > a:hover {
+    text-decoration: underline;
+}
+
+ul.searchhits li .snippet {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #444;
+    margin-top: 5px;
+}
+
+ul.searchhits li .title {
+    font-size: 13px;
+    color: #666;
+}
+
