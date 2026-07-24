@@ -9,25 +9,27 @@ Este documento explica cómo añadir un **nuevo filtro (faceta)** a un buscador 
 La priorización de resultados y filtros está organizada en 3 capas alineadas:
 
 ### Capa 1: Boosting de Campos en Solr (*Field Boosting*)
-Cuando un usuario busca un término en Solr, los campos deben responder con ponderaciones distintas. Esto se configura en `solrconfig.xml` del core `vivocore` (parámetros `qf` - Query Fields) o en el controlador Java `PagedSearchControllerFaceted.java`:
 
-```xml
-<!-- Configuración recomendada de Query Fields (qf) en solrconfig.xml -->
-<str name="qf">
-    nameRaw^10.0
-    nameLowercaseSingleValued^5.0
-    facet_expertiseAreas^3.0
-    facet_researchFocus^2.0
-    ALLTEXT^1.0
-</str>
-```
+Cuando un usuario busca un término en Solr, los campos responden con ponderaciones
+distintas. Se configura en el `solrconfig.xml` del core `vivocore` (parámetro `qf`,
+*Query Fields*), dentro del handler `/select`.
 
-| Campo | Peso (Boost) | Razón |
+> ⚠️ **La configuración vigente está en [`05-relevancia-solr.md`](05-relevancia-solr.md).**
+> Ese documento describe el `qf`/`pf` que está **realmente aplicado y verificado**,
+> junto con los sinónimos multilingües y el corte por nombre del frontend. Úsalo
+> como referencia al desplegar: es la fuente de verdad.
+
+El principio es el mismo que se describe abajo —el nombre debe pesar mucho más que
+el texto general—, con un matiz aprendido en la práctica: `ALLTEXT` no es solo la
+biografía, sino un campo donde VIVO funde **también los títulos de las publicaciones
+y proyectos** del investigador. Por eso su peso se **baja** (no se sube), o una
+búsqueda por apellido devuelve a cualquiera que mencione esa palabra en un paper.
+
+| Campo | Criterio | Razón |
 |---|---|---|
-| `nameRaw` / `nameLowercaseSingleValued` | **^10.0 / ^5.0** | Si coincide el nombre exacto de la persona/programa, DEBE aparecer de primero. |
-| `facet_expertiseAreas` | **^3.0** | Coincidencia en área de especialización directa. |
-| `facet_researchFocus` | **^2.0** | Coincidencia en foco de investigación. |
-| `ALLTEXT` | **^1.0** | Texto general del perfil/biografía (peso base). |
+| Campos de nombre (`nameText`, `nameUnstemmed`, `nameLowercase`…) | **Peso alto** | Si coincide el nombre de la persona/programa, DEBE aparecer de primero. |
+| `pf` / `pf2` (boost por frase sobre el nombre) | **Peso alto** | Premia que los términos aparezcan juntos y en orden. |
+| `ALLTEXT` / `ALLTEXTUNSTEMMED` | **Peso bajo** | Aporta *recall* para búsquedas temáticas, pero contiene el texto de las publicaciones: si pesa mucho, mete ruido. |
 
 ### Capa 2: Ordenamiento por Defecto en la UI (*Sort Default*)
 Para que los resultados muestren primero a los investigadores más productivos o relevantes y no sigan un simple orden alfabético A-Z:
