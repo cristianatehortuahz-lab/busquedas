@@ -8,8 +8,10 @@ Esta guía está diseñada para **futuros desarrolladores** que necesiten audita
 |---|---|
 | **README.md** (este) | Flujo de una búsqueda, arquitectura por capas, troubleshooting |
 | [`01-arquitectura.md`](01-arquitectura.md) | Arquitectura de 3 capas en detalle |
+| [`02-auditoria-practicas.md`](02-auditoria-practicas.md) | Auditoría LOCAL vs paquete de prácticas |
 | [`03-despliegue.md`](03-despliegue.md) | Despliegue en servidor (rutas, pasos) |
 | [`04-configuracion.md`](04-configuracion.md) | Configuración por ambiente |
+| [`05-relevancia-solr.md`](05-relevancia-solr.md) | Relevancia: ranking en Solr + sinónimos + corte por nombre |
 
 ---
 
@@ -116,7 +118,7 @@ Para evitar confusiones con archivos residuales heredados de desarrollos previos
 
 | Archivo Fuente | Versión Activa | Notas |
 |---|---|---|
-| `dashboardSearch_hub_v19.js` | **v19** (Premium) | Módulo principal del dashboard (maneja esqueletos y animaciones). |
+| `dashboardSearch_hub_v19.js` | **v19** (Premium) | Módulo principal del dashboard (esqueletos, animaciones y **corte por acantilado de nombre**, ver [`05-relevancia-solr.md`](05-relevancia-solr.md)). |
 | `dynamic-filters4.js` | **v4** | Motor AJAX para facetas. *Nota: v1, v2 y v3 pueden existir en el servidor; IGNÓRALAS.* |
 | `searchDownload.js` | **v5.9** | Inyecta las capacidades de exportación de datos (CSV/XML). |
 | `autocomplete.js` | *Stand-alone* | Sin versionamiento estricto. |

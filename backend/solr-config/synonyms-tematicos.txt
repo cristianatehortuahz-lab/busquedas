@@ -1,0 +1,29 @@
+# Fragmento de referencia para vivocore/conf/synonyms.txt
+# ================================================================
+#
+# Anadir estas lineas AL FINAL del synonyms.txt del core vivocore. Se usan en el
+# analizador de CONSULTA del tipo "text" (ALLTEXT), asi que NO requieren
+# reindexar, solo recargar el core:
+#
+#     curl "http://localhost:8983/solr/admin/cores?action=RELOAD&core=vivocore"
+#
+# Muchos investigadores describen sus areas de interes en ingles ("Applied
+# mathematics", "Chemistry") mientras las busquedas se hacen en espanol. Sin
+# estos mapeos, buscar "matematicas" no encontraba al matematico cuya area dice
+# "mathematics". Detalle en documentacion/05-relevancia-solr.md
+
+# Sinonimos tematicos multilingues (HUB-UR)
+matematicas,matematica,matematico,mathematics,mathematical
+quimica,quimico,chemistry,chemical
+fisica,physics,physical
+biologia,biology,biological
+computacion,informatica,computer science,computing,computacional
+ingenieria,engineering
+estadistica,statistics,statistical
+economia,economics,economic
+educacion,education,pedagogia,didactica
+psicologia,psychology
+sociologia,sociology
+filosofia,philosophy
+historia,history
+linguistica,linguistics,lenguaje,language

@@ -1,0 +1,31 @@
+<!--
+  Fragmento de referencia para vivocore/conf/solrconfig.xml
+  ================================================================
+
+  Va DENTRO del handler <requestHandler name="/select">, en el <lst name="defaults">.
+  Reemplaza la linea original de <str name="qf">...</str> por este bloque y anade
+  las lineas pf/pf2/tie. Es un cambio de tiempo de consulta: NO requiere reindexar,
+  solo recargar el core:
+
+      curl "http://localhost:8983/solr/admin/cores?action=RELOAD&core=vivocore"
+
+  Detalle y motivacion en documentacion/05-relevancia-solr.md
+-->
+
+<!-- Ranking de relevancia (HUB-UR):
+     ALLTEXT es un campo "cajon de sastre" que concentra TODO el texto del
+     individuo, incluidos los titulos de sus publicaciones y proyectos. Por eso
+     una busqueda por apellido ("rios") tambien traia gente cuyos papers
+     mencionan "rio". No se puede excluir ese ruido en la consulta (todo esta
+     fundido en ALLTEXT), pero si se puede hundir en el ranking:
+       - Se BAJA el peso de ALLTEXT/ALLTEXTUNSTEMMED (^0.5): siguen aportando
+         recall (una busqueda tematica como "matematicas" encuentra a la persona
+         por su area o departamento), pero puntuan poco.
+       - Se SUBE mucho el peso de los campos de NOMBRE.
+       - pf/pf2 premian que los terminos aparezcan juntos y en orden en el nombre.
+     La separacion perfecta identidad/publicaciones exigiria cambiar que mete
+     VIVO en ALLTEXT al indexar (lado Java/RDF), no aqui. -->
+<str name="qf">ALLTEXT^0.5 ALLTEXTUNSTEMMED^0.5 nameText^8.0 nameUnstemmed^8.0 nameStemmed^6.0 nameLowercase^10.0</str>
+<str name="pf">nameText^15.0 nameUnstemmed^15.0 ALLTEXT^3.0</str>
+<str name="pf2">nameText^10.0 nameUnstemmed^10.0</str>
+<str name="tie">0.1</str>

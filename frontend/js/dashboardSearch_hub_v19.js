@@ -408,50 +408,55 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /**
-     * extractTitle - Devuelve el titulo propio de un resultado de busqueda.
+     * titleText - Devuelve el titulo/nombre propio de un resultado (el <li> crudo
+     * de VIVO): el nombre del investigador, el titulo de la publicacion o el
+     * nombre de la organizacion/programa. NO incluye el fragmento de contexto.
      *
-     * Es el nombre del investigador, el nombre de la organizacion o programa,
-     * o el titulo de la publicacion: NO el fragmento de contexto que VIVO
-     * agrega debajo.
-     *
-     * Hace falta porque en las tarjetas ya renderizadas por la plantilla FTL
-     * el nombre, el cargo, la facultad y el fragmento cuelgan todos del mismo
-     * <a>. Leer `a.textContent` mezclaria las cuatro cosas y un resultado
-     * pasaria el filtro por una coincidencia en su fragmento (buscar "rios"
-     * devolvia investigadores que solo mencionan rios en sus publicaciones).
-     *
-     * Los selectores replican los que usan los builders de cada categoria.
+     * Se usa para el corte por acantilado de nombre: distinguir si el termino
+     * buscado coincide en el titulo (busqueda de nombre) o no (busqueda tematica).
      *
      * @param {HTMLElement} li - Elemento <li> de un resultado
-     * @returns {string} Titulo del resultado, o cadena vacia si no se encuentra
+     * @returns {string} Titulo del resultado, o cadena vacia
      */
-    function extractTitle(li) {
-        // 1. Tarjetas Premium del HUB: el nombre esta aislado en su propio span
-        const premium = li.querySelector('.hub-sv-name, .hub-pub-title, .hub-program-name');
-        if (premium) return premium.textContent.trim();
-
-        // 2. Estructura estandar de VIVO: el titulo va dentro de un <h3>
-        const heading = li.querySelector('h3 a, h3.thumb a');
-        if (heading) return heading.textContent.trim();
-
-        // 3. Contenedor data-vclass que envuelve al enlace (FTL por defecto)
-        const vclass = li.querySelector('[data-vclass]');
-        if (vclass) {
-            const inner = vclass.querySelector('.hub-sv-name');
-            if (inner) return inner.textContent.trim();
-            if (vclass.tagName !== 'A') {
-                const a = vclass.querySelector('a[href]');
-                if (a) return a.textContent.trim();
-            }
-        }
-
-        // 4. Respaldo: primer enlace, descontando el fragmento de contexto si lo lleva
+    function titleText(li) {
+        // Persona: el nombre va en su propio h1/span
+        const persona = li.querySelector('.shortview_person-name a, .shortview_person-name, .hub-sv-name');
+        if (persona) return persona.textContent;
+        // Publicacion / organizacion / programa: el titulo es el primer enlace
+        // dentro del contenedor .individual (antes del .display-title y .snippet)
+        const enlace = li.querySelector('.individual > a, h3 a, .hub-pub-title, .hub-program-name, .hub-org-name');
+        if (enlace) return enlace.textContent;
         const a = li.querySelector('a[href]');
-        if (!a) return '';
-        const clon = a.cloneNode(true);
-        clon.querySelectorAll('.hub-sv-snippet, .snippet, .hub-sv-role, .hub-sv-dept-tag, .hub-sv-dept')
-            .forEach(el => el.remove());
-        return clon.textContent.trim();
+        return a ? a.textContent : '';
+    }
+
+    /**
+     * cutAtNameCliff - Corte por acantilado de nombre sobre resultados YA
+     * ORDENADOS por relevancia por VIVO.
+     *
+     * Si el mejor resultado coincide en su titulo con el termino buscado, la
+     * busqueda se trata como de NOMBRE: se conserva solo la racha inicial de
+     * resultados que tambien coinciden en el titulo y se corta en el primero que
+     * no (el ruido que el ranking de Solr ya dejo al fondo). Si el mejor
+     * resultado NO coincide en su titulo, la busqueda es TEMATICA y no se corta.
+     *
+     * @param {HTMLElement[]} lista - resultados en orden de relevancia
+     * @param {string} query - texto buscado
+     * @returns {HTMLElement[]} lista recortada (o la misma si es tematica)
+     */
+    function cutAtNameCliff(lista, query) {
+        if (!query || query.length < 3 || lista.length === 0) return lista;
+        const tokens = normalizeText(query).split(/\s+/).filter(t => t.length >= 2);
+        if (tokens.length === 0) return lista;
+        const nombreCoincide = li => {
+            const t = normalizeText(titleText(li));
+            return !!t && tokens.every(tok => t.includes(tok));
+        };
+        // Busqueda tematica: el mejor resultado no coincide en el nombre -> no cortar
+        if (!nombreCoincide(lista[0])) return lista;
+        // Busqueda de nombre: cortar en el primer resultado que no coincide en el nombre
+        const corte = lista.findIndex(li => !nombreCoincide(li));
+        return corte > 0 ? lista.slice(0, corte) : lista;
     }
 
     /**
@@ -1161,26 +1166,32 @@ document.addEventListener("DOMContentLoaded", function () {
                         seenUrls.add(href);
                         return true;
                     })
-                    // Filtro 3: Validacion de relevancia por TITULO
-                    // El termino buscado debe aparecer en el titulo propio del
-                    // resultado (nombre del investigador, nombre de la organizacion
-                    // o programa, titulo de la publicacion), no en el fragmento de
-                    // contexto que VIVO agrega debajo. Sin esto, buscar "rios"
-                    // mostraba investigadores que solo mencionan rios en sus
-                    // publicaciones, aunque no se apelliden Rios.
-                    // Usa normalizacion para ignorar acentos ("García" matchea "garcia")
-                    // y compara token por token para aceptar ordenes distintos
-                    // (ej: "maria rios" matchea "Rios Perez, Maria").
-                    .filter(li => {
-                        if (!queryText || queryText.length < 3) return true;
-                        const titleNorm = normalizeText(extractTitle(li));
-                        if (!titleNorm) return false;
-                        // Todos los tokens del query (2+ letras) deben estar en el titulo
-                        return normalizeText(queryText)
-                            .split(/\s+/)
-                            .filter(tok => tok.length >= 2)
-                            .every(tok => titleNorm.includes(tok));
-                    });
+                    // Filtro 3: SIN filtro de texto duro en el cliente.
+                    //
+                    // La relevancia la resuelve Solr (solrconfig.xml del core
+                    // vivocore): el ranking pondera fuerte el nombre y por frase
+                    // (qf/pf), y baja el peso de ALLTEXT —el campo que mezcla las
+                    // publicaciones—, de modo que VIVO ya entrega los resultados
+                    // ORDENADOS por relevancia. Ej.: buscar "rios" pone arriba a
+                    // quienes se apellidan Rios (score ~56) y hunde a quienes solo
+                    // lo mencionan en un paper (score ~1); "matematicas" trae a los
+                    // matematicos (incluidas areas en ingles, via synonyms.txt).
+                    ;
+
+                // --- CORTE POR ACANTILADO DE NOMBRE ---
+                // Afina el resultado sin romper las busquedas tematicas. VIVO no
+                // expone el score al frontend, pero SI entrega los resultados en
+                // orden de relevancia, y su ranking coloca las coincidencias de
+                // NOMBRE muy por encima del resto. Aprovechando eso:
+                //   - Si el primer resultado (el mejor) coincide en su NOMBRE, la
+                //     busqueda es de nombre ("rios"): se conserva la racha inicial
+                //     que tambien coincide en el nombre y se corta en el primero
+                //     que no (el ruido de publicaciones que Solr ya hundio).
+                //   - Si el primer resultado NO coincide en el nombre, la busqueda
+                //     es tematica ("matematicas", "quimica": nadie se apellida asi):
+                //     no se corta nada y se muestran todos los que devolvio VIVO.
+                // Asi "rios" queda limpio (solo los Rios) y "matematicas" completo.
+                relevant = cutAtNameCliff(relevant, queryText);
 
                 // Almacenar los datos procesados en el estado global para no reprocesar
                 this.state[key].data = relevant;
@@ -1286,12 +1297,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // Asegurar que la seccion sea visible
             section.style.display = 'block';
 
-            // Actualizar el total en el header de seccion.
-            // Se usa el conteo YA FILTRADO por titulo (relevant.length), no el
-            // total crudo de VIVO (totalCount): tras el filtro de relevancia el
-            // numero de VIVO incluiria resultados que no se muestran y el header
-            // contradiria a las tarjetas visibles.
-            if (total) total.textContent = relevant.length.toLocaleString('es-CO');
+            // Actualizar el total en el header de seccion con el conteo de VIVO.
+            // Ya no hay filtro de relevancia en el cliente (lo resuelve el ranking
+            // de Solr), asi que el conteo de VIVO coincide con lo que se lista.
+            if (total) total.textContent = totalCount.toLocaleString('es-CO');
 
             // Ocultar boton antiguo "Ver todos" (reemplazado por expand/collapse)
             if (btn) btn.style.display = 'none';
