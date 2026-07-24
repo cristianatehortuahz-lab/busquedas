@@ -25,7 +25,11 @@
        - pf/pf2 premian que los terminos aparezcan juntos y en orden en el nombre.
      La separacion perfecta identidad/publicaciones exigiria cambiar que mete
      VIVO en ALLTEXT al indexar (lado Java/RDF), no aqui. -->
-<str name="qf">ALLTEXT^0.5 ALLTEXTUNSTEMMED^0.5 nameText^8.0 nameUnstemmed^8.0 nameStemmed^6.0 nameLowercase^10.0</str>
+<!-- ALLTEXT_ES es el mismo texto de ALLTEXT indexado con analisis de espanol.
+     El corpus es bilingue; con un solo analizador ingles la morfologia espanola
+     se fragmenta ("genetica" y "genetico" quedaban como raices distintas).
+     Requiere crear el campo y reindexar: ver schema-campo-espanol.md -->
+<str name="qf">ALLTEXT^0.5 ALLTEXT_ES^0.5 ALLTEXTUNSTEMMED^0.5 nameText^8.0 nameUnstemmed^8.0 nameStemmed^6.0 nameLowercase^10.0</str>
 <str name="pf">nameText^15.0 nameUnstemmed^15.0 ALLTEXT^3.0</str>
 <str name="pf2">nameText^10.0 nameUnstemmed^10.0</str>
 <str name="tie">0.1</str>

@@ -1,8 +1,8 @@
 # 🎯 Relevancia de búsqueda: ranking en Solr + corte por nombre
 
 Este documento describe cómo se resuelve la **relevancia** de los resultados del
-buscador: qué se muestra, en qué orden, y por qué. Son tres piezas que trabajan
-juntas —dos en **Solr** (servidor) y una en el **frontend** (JavaScript)— y hay
+buscador: qué se muestra, en qué orden, y por qué. Son cuatro piezas que trabajan
+juntas —tres en **Solr** (servidor) y una en el **frontend** (JavaScript)— y hay
 que replicar las de Solr en cualquier despliegue nuevo, o el buscador vuelve al
 comportamiento antiguo.
 
@@ -54,6 +54,9 @@ sobre las de `ALLTEXT` (donde vive el ruido de publicaciones):
 ruido a ≈ 1 (un acantilado limpio). Es un cambio de **tiempo de consulta**: NO
 requiere reindexar.
 
+> El `qf` de arriba es el de esta pieza, aplicable por sí sola. La **sección 4**
+> añade a ese mismo `qf` el campo `ALLTEXT_ES^0.5`, que sí requiere reindexar.
+
 ---
 
 ## 3. Pieza 2 — Sinónimos multilingües en `synonyms.txt`
@@ -84,9 +87,56 @@ linguistica,linguistics,lenguaje,language
 **Efecto medido:** `matematicas` pasó de 27 a ~36 resultados (ahora encuentra
 matemáticos con áreas en inglés).
 
+> ⚠️ **Esta lista cubre solo los temas que enumera, y eso es una limitación real.**
+> Donde hay sinónimo la búsqueda es simétrica entre idiomas; donde no lo hay, no:
+>
+> | Tema | Español | Inglés | |
+> |---|---|---|---|
+> | matemáticas / mathematics | 36 | 36 | en la lista |
+> | química / chemistry | 19 | 19 | en la lista |
+> | genética / genetics | 25 | **33** | fuera |
+> | enfermería / nursing | 23 | **9** | fuera |
+> | derecho / law | 101 | **62** | fuera |
+>
+> La **morfología** dentro de un idioma no debe resolverse con esta lista, sino
+> con el analizador (pieza 3). Los mapeos **entre idiomas** sí requieren un
+> diccionario: ningún stemmer cruza idiomas. Lo ideal sería **generarlo desde los
+> propios datos** (VIVO guarda etiquetas en ambos idiomas) en vez de escribirlo a
+> mano, para cubrir todos los temas y no unos pocos.
+
 ---
 
-## 4. Pieza 3 — Corte por acantilado de nombre (frontend)
+## 4. Pieza 3 — Análisis de español (`ALLTEXT_ES`)
+
+**Archivos:** esquema del core `vivocore` (campo + `copyField`) y `qf` en
+`solrconfig.xml`. Fragmento en
+[`backend/solr-config/schema-campo-espanol.md`](../backend/solr-config/schema-campo-espanol.md).
+
+El campo principal (`ALLTEXT`) se analiza con un stemmer de **inglés** sobre un
+corpus mayoritariamente **español**. La morfología española queda fragmentada:
+
+| Formas del mismo concepto | Stemmer inglés | Stemmer español |
+|---|---|---|
+| genética / genético / genéticas | 2 raíces | **1 raíz** |
+| matemáticas / matemático | 2 raíces | **1 raíz** |
+| jurídico / jurídica / jurídicas | 2 raíces | **1 raíz** |
+
+Efecto visible: `genética` devolvía 25 investigadores y `genético` solo 15.
+
+No se cambia el stemmer de `ALLTEXT` porque el corpus es **bilingüe** (las áreas
+se describen unas veces en español y otras en inglés): arreglaría el español y
+rompería el inglés. En su lugar se indexa **el mismo texto dos veces** —`ALLTEXT`
+con análisis inglés y `ALLTEXT_ES` con análisis español, vía `copyField`— y se
+consultan ambos en `qf`. Cada consulta acierta por el campo de su idioma, **sin
+detectar idioma y sin listas de términos**: aplica a toda palabra del idioma.
+
+> ⚠️ A diferencia de las piezas 1 y 2, esta **exige reindexar** (el campo se llena
+> al indexar). Mientras no se reindexe, `ALLTEXT_ES` queda vacío y no altera nada:
+> es seguro de desplegar y se activa con el *Rebuild Search Index* de VIVO.
+
+---
+
+## 5. Pieza 4 — Corte por acantilado de nombre (frontend)
 
 **Archivo:** `frontend/js/dashboardSearch_hub_v19.js`, funciones `titleText()`,
 `tituloCoincide()`, `rachaDeCoincidencias()` y `esNombreDePersona()`.
@@ -98,7 +148,7 @@ relevancia, y gracias al ranking de la Pieza 1 las coincidencias de nombre van
 siempre arriba, separadas del ruido por un acantilado de puntaje. Aprovechando
 eso, el frontend afina el resultado **sin tocar el backend**.
 
-### 4.1 La decisión es GLOBAL, y la toma la sección de investigadores
+### 5.1 La decisión es GLOBAL, y la toma la sección de investigadores
 
 La sección de **Investigadores** carga primero (ver `ORDER` en `init`) y clasifica
 la consulta para **todas** las secciones:
@@ -110,7 +160,7 @@ la consulta para **todas** las secciones:
 - Si **no** coincide, la consulta es **temática** (`matematicas`, `quimica`) y
   **no se corta nada** en ninguna sección.
 
-### 4.2 Por qué solo se mira el nombre de PERSONA
+### 5.2 Por qué solo se mira el nombre de PERSONA
 
 Es la parte contraintuitiva y el motivo de que la regla no sea "si alguna sección
 coincide por título". Un **tema** aparece de forma natural en el nombre de las
@@ -124,7 +174,7 @@ como nombre (por el laboratorio) y **se borraría a los químicos**, que coincid
 por sus áreas de interés y no por su apellido. El nombre de persona es la única
 señal fiable.
 
-### 4.3 Coincidencia en inicio de palabra
+### 5.3 Coincidencia en inicio de palabra
 
 `tituloCoincide()` exige que el término empiece una palabra, no que aparezca en
 cualquier posición. Sin esto, `rios` coincidía dentro de "planeta**rios**" y colaba
@@ -134,7 +184,7 @@ escribir solo el principio (`mate` encuentra "matemáticas").
 
 ---
 
-## 5. Resultado
+## 6. Resultado
 
 Verificado en vivo sobre el entorno local:
 
@@ -165,16 +215,27 @@ salía porque uno de sus miembros se apellida Ríos—, y `matematicas` mostraba
 
 ---
 
-## 6. Cómo aplicar en un servidor nuevo
+## 7. Cómo aplicar en un servidor nuevo
+
+**Sin reindexar** (efecto inmediato tras recargar el core):
 
 1. Editar `vivocore/conf/solrconfig.xml` con el bloque `qf`/`pf`/`pf2`/`tie` de la
    sección 2.
 2. Añadir los sinónimos de la sección 3 al final de `vivocore/conf/synonyms.txt`.
-3. Recargar el core (sin reindexar):
+3. Desplegar `dashboardSearch_hub_v19.js` (ya incluye el corte por nombre).
+4. Recargar el core:
    ```bash
    curl "http://localhost:8983/solr/admin/cores?action=RELOAD&core=vivocore"
    ```
-4. Desplegar `dashboardSearch_hub_v19.js` (ya incluye el corte por acantilado).
+
+**Con reindexado** (activa el análisis de español de la sección 4):
+
+5. Crear el campo `ALLTEXT_ES` y su `copyField`, y añadirlo al `qf`, siguiendo
+   [`backend/solr-config/schema-campo-espanol.md`](../backend/solr-config/schema-campo-espanol.md).
+6. Entrar a VIVO como administrador → **Site Admin → Rebuild Search Index**.
+
+Los pasos 5-6 son seguros de aplicar por separado: mientras no se reindexe, el
+campo nuevo queda vacío y la búsqueda funciona igual que con los pasos 1-4.
 
 > Las piezas de Solr de este repo están en
 > [`backend/solr-config/`](../backend/solr-config/) como referencia para copiar.
