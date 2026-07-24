@@ -50,7 +50,8 @@ Para modificar algo, necesitas saber a qué capa pertenece el componente.
 
 ### Capa 1: Presentación (Motor FreeMarker)
 
-Ubicación en el servidor: `ROOT/themes/wilma/templates/`
+Ubicación en el servidor: `/opt/tomcat/webapps/HUBvivo115/themes/wilma/templates/`
+(la webapp es `HUBvivo115`, **no** `ROOT`)
 
 | Plantilla `.ftl` | Endpoint HTTP | Tipo de Entidad Ontológica |
 |---|---|---|
@@ -65,7 +66,7 @@ Ubicación en el servidor: `ROOT/themes/wilma/templates/`
 
 ### Capa 2: Lógica (Java Servlets)
 
-Ubicación en servidor: `ROOT/WEB-INF/classes/.../controller/search/`
+Ubicación en servidor: `/opt/tomcat/webapps/HUBvivo115/WEB-INF/classes/.../controller/search/`
 
 * **`PagedSearchControllerFaceted`**: Es un único servlet genérico que se "clona" 5 veces en el archivo `web.xml` usando distintos `init-param`. Cambiando su configuración XML puedes definir qué campos Solr solicita o qué plantilla renderiza sin tocar código Java.
 * **`UrAutocompleteController`**: Micro-servicio REST que atiende únicamente consultas de tecleo (typeahead) en `/autocompleteUr`. Devuelve arreglos de texto JSON puros.

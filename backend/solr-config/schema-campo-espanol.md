@@ -3,6 +3,8 @@
 Fragmento de referencia para el core `vivocore`. Detalle y motivación en
 [`documentacion/05-relevancia-solr.md`](../../documentacion/05-relevancia-solr.md).
 
+**Ruta en el servidor de prácticas:** `/opt/solr/server/solr/vivocore/conf/`
+
 ## Problema
 
 El campo principal de búsqueda (`ALLTEXT`, tipo `text`) se analiza con un stemmer

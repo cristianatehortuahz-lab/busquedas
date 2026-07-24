@@ -215,14 +215,26 @@ salía porque uno de sus miembros se apellida Ríos—, y `matematicas` mostraba
 
 ---
 
-## 7. Cómo aplicar en un servidor nuevo
+## 7. Cómo aplicar en el servidor
+
+> ⚠️ **La webapp del servidor es `HUBvivo115`, no `ROOT`.** Desplegar contra
+> `ROOT` no da error: simplemente no surte efecto. Las rutas de abajo son las
+> reales, al mismo nivel que el mapa de coautorías
+> (`/opt/tomcat/webapps/HUBvivo115/js/coauthorNetworkViz/`).
+
+| Qué | Ruta en el servidor de prácticas |
+|---|---|
+| Configuración de Solr | `/opt/solr/server/solr/vivocore/conf/` |
+| JS del buscador | `/opt/tomcat/webapps/HUBvivo115/js/dashboardSearch_hub_v19.js` |
 
 **Sin reindexar** (efecto inmediato tras recargar el core):
 
-1. Editar `vivocore/conf/solrconfig.xml` con el bloque `qf`/`pf`/`pf2`/`tie` de la
-   sección 2.
-2. Añadir los sinónimos de la sección 3 al final de `vivocore/conf/synonyms.txt`.
-3. Desplegar `dashboardSearch_hub_v19.js` (ya incluye el corte por nombre).
+1. Editar `/opt/solr/server/solr/vivocore/conf/solrconfig.xml` con el bloque
+   `qf`/`pf`/`pf2`/`tie` de la sección 2.
+2. Añadir los sinónimos de la sección 3 al final de
+   `/opt/solr/server/solr/vivocore/conf/synonyms.txt`.
+3. Copiar `dashboardSearch_hub_v19.js` (ya incluye el corte por nombre) a
+   `/opt/tomcat/webapps/HUBvivo115/js/`.
 4. Recargar el core:
    ```bash
    curl "http://localhost:8983/solr/admin/cores?action=RELOAD&core=vivocore"

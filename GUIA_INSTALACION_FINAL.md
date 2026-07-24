@@ -88,8 +88,10 @@ Asegúrate de que los campos `facet_*` (ej: `facet_expertiseAreas`, `facet_acade
 **Causa:** Caché guardada del navegador o Tomcat conservando la versión vieja de `dynamic-filters.js`.
 **Solución:** Purga la carpeta de trabajo de Tomcat:
 ```bash
-sudo rm -rf /opt/tomcat/work/Catalina/localhost/_/*
-sudo sudo /etc/rc.d/init.d/tomcat stop && sleep 5 && sudo /etc/rc.d/init.d/tomcat start
+# Limpia todos los contextos: sirve tanto si VIVO esta mapeado como
+# HUBvivo115 como si server.xml lo publica en la raiz (contexto "_")
+sudo rm -rf /opt/tomcat/work/Catalina/localhost/*
+sudo /etc/rc.d/init.d/tomcat stop && sleep 5 && sudo /etc/rc.d/init.d/tomcat start
 ```
 
 ---

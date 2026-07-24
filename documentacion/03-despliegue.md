@@ -6,27 +6,40 @@ Esta guía detalla cómo actualizar el frontend del Buscador Facetado en el serv
 Abre **Xshell** (o tu cliente SSH) y conéctate como usuario `admincrai` a `10.194.194.96`.
 
 ## 2. Ubicación del Contexto (Tomcat)
-El servidor utiliza Tomcat 9. El contexto de la aplicación VIVO (frecuentemente llamado `ROOT` o `HUBvivo115`) se encuentra mapeado en el directorio de migración.
 
-Ruta base recomendada (según tu historial de despliegue):
-`cd /home/admincrai/migracion-1.11/vivo11-installer-prod/VIVO/installer/webapp/target/vivo11-origen/`
-*(o la ruta activa definida en el `server.xml` de Tomcat).*
+El servidor utiliza Tomcat 9. **La webapp de VIVO es `HUBvivo115`, no `ROOT`.**
+
+```
+/opt/tomcat/webapps/HUBvivo115/
+```
+
+> ⚠️ Es el mismo nivel donde vive el mapa de coautorías
+> (`/opt/tomcat/webapps/HUBvivo115/js/coauthorNetworkViz/`). Copiar archivos a
+> `/opt/tomcat/webapps/ROOT/` **no da error**: simplemente no surte efecto, y el
+> despliegue parece correcto aunque no lo sea.
 
 ## 3. Transferencia de Archivos (Vía XFTP)
-Abre **XFTP** y transfiere los archivos modificados desde tu máquina local respetando la estructura de carpetas:
 
-- **JS Core:** Arrastra `dashboardSearch_hub_v19.js` y `searchDownload.js` a la carpeta `/js/` de VIVO.
-- **JS Tema:** Arrastra `dynamic-filters4.js` y `autocomplete.js` a `/themes/wilma/js/`.
-- **CSS:** Arrastra los `.css` a `/css/` y `/themes/wilma/css/`.
-- **FTL:** Arrastra las plantillas `.ftl` a `/themes/wilma/templates/` y la subcarpeta `shortview` a `/templates/freemarker/body/partials/shortview/`.
+Transfiere los archivos desde tu máquina local a estas rutas **absolutas**:
+
+| Archivo | Destino en el servidor |
+|---|---|
+| `dashboardSearch_hub_v19.js`, `searchDownload.js` | `/opt/tomcat/webapps/HUBvivo115/js/` |
+| `dynamic-filters4.js`, `autocomplete.js` | `/opt/tomcat/webapps/HUBvivo115/themes/wilma/js/` |
+| CSS del tema | `/opt/tomcat/webapps/HUBvivo115/themes/wilma/css/` |
+| CSS globales | `/opt/tomcat/webapps/HUBvivo115/css/` |
+| Plantillas `search-find-a-*.ftl` | `/opt/tomcat/webapps/HUBvivo115/themes/wilma/templates/` |
+| Subcarpeta `shortview` | `/opt/tomcat/webapps/HUBvivo115/templates/freemarker/body/partials/shortview/` |
 
 ## 4. Limpieza de Caché (Evitar Vistas Antiguas)
-Tomcat y el navegador almacenan copias fuertemente cacheadas del JavaScript y de las plantillas FreeMarker compiladas.
-Tras subir los archivos, fuerza a Tomcat a recompilar los `.ftl`:
+
+Tomcat cachea las plantillas FreeMarker compiladas. Tras subir los archivos,
+fuerza la recompilación borrando su carpeta de trabajo:
 
 ```bash
-# Limpiar carpeta de trabajo de Tomcat
-rm -rf /opt/tomcat/work/Catalina/localhost/_/*
+# Limpia todos los contextos: sirve tanto si VIVO esta mapeado como
+# HUBvivo115 como si server.xml lo publica en la raiz (contexto "_")
+sudo rm -rf /opt/tomcat/work/Catalina/localhost/*
 ```
 
 ## 5. Reinicio del Servicio (Opcional pero Recomendado)
