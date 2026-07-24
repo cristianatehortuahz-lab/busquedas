@@ -170,6 +170,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // Extraer el texto de busqueda del usuario para uso en highlighting
     const queryText = urlParams.get('querytext') || '';
 
+    // Clasificacion GLOBAL de la consulta, compartida por todas las secciones.
+    // La fija la seccion de investigadores (que carga primero) y la consultan las
+    // demas: si la consulta resulto ser el nombre de una persona, ninguna otra
+    // seccion debe mostrar resultados que no coincidan tambien en su titulo.
+    // null = todavia no se ha decidido. Ver esNombreDePersona().
+    let consultaEsNombreDePersona = null;
+
     /* ----------------------------------------------------------------------
      * 2.4 DETERMINACION DE LA URL BASE
      * VIVO define una variable global `urls.base` en sus plantillas FTL
@@ -431,32 +438,82 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /**
-     * cutAtNameCliff - Corte por acantilado de nombre sobre resultados YA
-     * ORDENADOS por relevancia por VIVO.
+     * queryTokens - Divide el texto buscado en tokens normalizados (2+ letras).
      *
-     * Si el mejor resultado coincide en su titulo con el termino buscado, la
-     * busqueda se trata como de NOMBRE: se conserva solo la racha inicial de
-     * resultados que tambien coinciden en el titulo y se corta en el primero que
-     * no (el ruido que el ranking de Solr ya dejo al fondo). Si el mejor
-     * resultado NO coincide en su titulo, la busqueda es TEMATICA y no se corta.
+     * @param {string} query - texto buscado
+     * @returns {string[]} tokens; vacio si la busqueda es demasiado corta
+     */
+    function queryTokens(query) {
+        if (!query || query.length < 3) return [];
+        return normalizeText(query).split(/\s+/).filter(t => t.length >= 2);
+    }
+
+    /**
+     * tituloCoincide - ¿El titulo propio del resultado empieza alguna palabra con
+     * cada uno de los tokens buscados?
+     *
+     * La coincidencia se exige en INICIO DE PALABRA, no en cualquier posicion.
+     * De lo contrario "rios" coincidia dentro de "planeta-rios" y colaba una
+     * publicacion titulada "...los limites planetarios" en una busqueda del
+     * apellido Rios. Exigir inicio de palabra descarta esa coincidencia y sigue
+     * permitiendo escribir solo el principio ("mate" encuentra "matematicas").
+     *
+     * @param {HTMLElement} li - resultado
+     * @param {string[]} tokens - tokens de la busqueda
+     * @returns {boolean}
+     */
+    function tituloCoincide(li, tokens) {
+        const t = normalizeText(titleText(li));
+        if (!t) return false;
+        return tokens.every(tok => {
+            const esc = tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return new RegExp('(^|[^a-z0-9])' + esc).test(t);
+        });
+    }
+
+    /**
+     * rachaDeCoincidencias - Devuelve la racha INICIAL de resultados cuyo titulo
+     * coincide, sobre una lista YA ORDENADA por relevancia por VIVO.
+     *
+     * Se apoya en el ranking de Solr (ver documentacion/05-relevancia-solr.md):
+     * las coincidencias de nombre puntuan ~56 y el ruido ~1, asi que VIVO las
+     * entrega todas juntas al principio. Cortar en la primera que no coincide
+     * elimina el ruido sin listas ni umbrales fijos.
+     *
+     * Puede devolver una lista VACIA (si ni el primer resultado coincide), lo que
+     * hace que la seccion se oculte: es el comportamiento deseado cuando la
+     * busqueda es un nombre de persona y esa seccion no tiene nada real.
      *
      * @param {HTMLElement[]} lista - resultados en orden de relevancia
-     * @param {string} query - texto buscado
-     * @returns {HTMLElement[]} lista recortada (o la misma si es tematica)
+     * @param {string[]} tokens - tokens de la busqueda
+     * @returns {HTMLElement[]} racha inicial de coincidencias (puede ser vacia)
      */
-    function cutAtNameCliff(lista, query) {
-        if (!query || query.length < 3 || lista.length === 0) return lista;
-        const tokens = normalizeText(query).split(/\s+/).filter(t => t.length >= 2);
-        if (tokens.length === 0) return lista;
-        const nombreCoincide = li => {
-            const t = normalizeText(titleText(li));
-            return !!t && tokens.every(tok => t.includes(tok));
-        };
-        // Busqueda tematica: el mejor resultado no coincide en el nombre -> no cortar
-        if (!nombreCoincide(lista[0])) return lista;
-        // Busqueda de nombre: cortar en el primer resultado que no coincide en el nombre
-        const corte = lista.findIndex(li => !nombreCoincide(li));
-        return corte > 0 ? lista.slice(0, corte) : lista;
+    function rachaDeCoincidencias(lista, tokens) {
+        const corte = lista.findIndex(li => !tituloCoincide(li, tokens));
+        return corte === -1 ? lista : lista.slice(0, corte);
+    }
+
+    /**
+     * esNombreDePersona - ¿La consulta es el nombre de una persona?
+     *
+     * Se decide MIRANDO SOLO LA SECCION DE INVESTIGADORES, y esto es deliberado.
+     *
+     * Un TEMA aparece de forma natural en el nombre de las entidades tematicas:
+     * buscar "quimica" coincide con el titulo del "Laboratorio de Investigacion en
+     * Bioquimica". Un APELLIDO, en cambio, no aparece nunca en el nombre de una
+     * organizacion: "Rios" jamas estara en "Facultad de Jurisprudencia".
+     *
+     * Por eso el nombre de PERSONA es la unica senal fiable. Si se aceptara la
+     * coincidencia de cualquier seccion, "quimica" se clasificaria como nombre
+     * (por el laboratorio) y se borraria a los quimicos, que coinciden por sus
+     * areas de interes y no por su apellido.
+     *
+     * @param {HTMLElement[]} perfiles - resultados de la seccion de investigadores
+     * @param {string[]} tokens - tokens de la busqueda
+     * @returns {boolean}
+     */
+    function esNombreDePersona(perfiles, tokens) {
+        return tokens.length > 0 && perfiles.length > 0 && tituloCoincide(perfiles[0], tokens);
     }
 
     /**
@@ -1181,17 +1238,39 @@ document.addEventListener("DOMContentLoaded", function () {
                 // --- CORTE POR ACANTILADO DE NOMBRE ---
                 // Afina el resultado sin romper las busquedas tematicas. VIVO no
                 // expone el score al frontend, pero SI entrega los resultados en
-                // orden de relevancia, y su ranking coloca las coincidencias de
-                // NOMBRE muy por encima del resto. Aprovechando eso:
-                //   - Si el primer resultado (el mejor) coincide en su NOMBRE, la
-                //     busqueda es de nombre ("rios"): se conserva la racha inicial
-                //     que tambien coincide en el nombre y se corta en el primero
-                //     que no (el ruido de publicaciones que Solr ya hundio).
-                //   - Si el primer resultado NO coincide en el nombre, la busqueda
-                //     es tematica ("matematicas", "quimica": nadie se apellida asi):
-                //     no se corta nada y se muestran todos los que devolvio VIVO.
-                // Asi "rios" queda limpio (solo los Rios) y "matematicas" completo.
-                relevant = cutAtNameCliff(relevant, queryText);
+                // orden de relevancia, y el ranking de Solr coloca las
+                // coincidencias de NOMBRE muy por encima del resto.
+                //
+                // La decision es GLOBAL, no por seccion, y la toma la seccion de
+                // investigadores (que carga primero, ver ORDER en init):
+                //
+                //   - INVESTIGADORES decide: si su mejor resultado coincide en el
+                //     nombre, la consulta es un nombre de persona ("rios").
+                //   - Si lo es, TODAS las secciones conservan solo su racha inicial
+                //     de coincidencias por titulo. Las que no tengan ninguna quedan
+                //     vacias y se ocultan solas: buscar "rios" ya no muestra la
+                //     "Facultad de Jurisprudencia" (aparecia solo porque uno de sus
+                //     miembros se apellida Rios, por rebote del campo ALLTEXT).
+                //   - Si NO lo es, la consulta es tematica ("matematicas",
+                //     "quimica") y no se corta nada en ninguna seccion.
+                //
+                // Se mira solo el nombre de PERSONA a proposito: un tema si aparece
+                // en el nombre de entidades tematicas ("quimica" esta dentro de
+                // "Laboratorio de Bioquimica"), asi que aceptar la coincidencia de
+                // cualquier seccion clasificaria "quimica" como nombre y borraria a
+                // los quimicos. Un apellido nunca aparece en el nombre de una
+                // organizacion. Detalle en documentacion/05-relevancia-solr.md
+                const tokens = queryTokens(queryText);
+                if (tokens.length > 0) {
+                    if (key === 'profiles') {
+                        consultaEsNombreDePersona = esNombreDePersona(relevant, tokens);
+                        if (consultaEsNombreDePersona) {
+                            relevant = rachaDeCoincidencias(relevant, tokens);
+                        }
+                    } else if (consultaEsNombreDePersona === true) {
+                        relevant = rachaDeCoincidencias(relevant, tokens);
+                    }
+                }
 
                 // Almacenar los datos procesados en el estado global para no reprocesar
                 this.state[key].data = relevant;

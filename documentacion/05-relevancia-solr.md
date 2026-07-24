@@ -88,34 +88,80 @@ matemáticos con áreas en inglés).
 
 ## 4. Pieza 3 — Corte por acantilado de nombre (frontend)
 
-**Archivo:** `frontend/js/dashboardSearch_hub_v19.js`, funciones `titleText()` y
-`cutAtNameCliff()`.
+**Archivo:** `frontend/js/dashboardSearch_hub_v19.js`, funciones `titleText()`,
+`tituloCoincide()`, `rachaDeCoincidencias()` y `esNombreDePersona()`.
 
 VIVO **no expone el *score*** al frontend (su modelo `IndividualSearchResult`
 solo tiene `uri`, `name`, `snippet`, `mostSpecificTypes`; exponerlo obligaría a
 recompilar el core Java de VIVO). Pero **sí** entrega los resultados en orden de
 relevancia, y gracias al ranking de la Pieza 1 las coincidencias de nombre van
-siempre arriba. Aprovechando eso, el frontend afina el resultado **sin backend**:
+siempre arriba, separadas del ruido por un acantilado de puntaje. Aprovechando
+eso, el frontend afina el resultado **sin tocar el backend**.
 
-- Si el **primer** resultado (el mejor rankeado) **coincide en su nombre/título**,
-  la búsqueda es de **nombre** (`rios`): se conserva la racha inicial que también
-  coincide en el nombre y se **corta** en el primero que no (el ruido que Solr ya
-  dejó al fondo).
-- Si el primer resultado **no** coincide en el nombre, la búsqueda es **temática**
-  (`matematicas`, `quimica`: nadie se apellida así): **no se corta nada** y se
-  muestran todos los que devolvió VIVO.
+### 4.1 La decisión es GLOBAL, y la toma la sección de investigadores
 
-La regla se adapta sola a cada búsqueda, sin listas ni umbrales fijos.
+La sección de **Investigadores** carga primero (ver `ORDER` en `init`) y clasifica
+la consulta para **todas** las secciones:
+
+- Si su mejor resultado **coincide en el nombre**, la consulta es un **nombre de
+  persona** (`rios`). Entonces **todas** las secciones conservan solo su racha
+  inicial de coincidencias por título; las que no tengan ninguna quedan vacías y
+  **se ocultan solas**.
+- Si **no** coincide, la consulta es **temática** (`matematicas`, `quimica`) y
+  **no se corta nada** en ninguna sección.
+
+### 4.2 Por qué solo se mira el nombre de PERSONA
+
+Es la parte contraintuitiva y el motivo de que la regla no sea "si alguna sección
+coincide por título". Un **tema** aparece de forma natural en el nombre de las
+entidades temáticas: buscar `quimica` coincide con el título del *"Laboratorio de
+Investigación en Bio**química**"*. Un **apellido**, en cambio, no aparece jamás en
+el nombre de una organización: *"Ríos"* nunca estará en *"Facultad de
+Jurisprudencia"*.
+
+Si se aceptara la coincidencia de cualquier sección, `quimica` se clasificaría
+como nombre (por el laboratorio) y **se borraría a los químicos**, que coinciden
+por sus áreas de interés y no por su apellido. El nombre de persona es la única
+señal fiable.
+
+### 4.3 Coincidencia en inicio de palabra
+
+`tituloCoincide()` exige que el término empiece una palabra, no que aparezca en
+cualquier posición. Sin esto, `rios` coincidía dentro de "planeta**rios**" y colaba
+una publicación titulada *"…los límites planetarios"* en una búsqueda del apellido
+Ríos. Exigir inicio de palabra descarta esa coincidencia y sigue permitiendo
+escribir solo el principio (`mate` encuentra "matemáticas").
 
 ---
 
 ## 5. Resultado
 
-| Búsqueda | Tipo | Antes | Ahora |
-|---|---|---|---|
-| `rios` | nombre | 27 (24 de ruido) | **3** — solo apellidos Ríos |
-| `matematicas` | tema | 2 (filtro roto) | **27** — todos los matemáticos |
-| `quimica` | tema | — | químicos + laboratorios |
+Verificado en vivo sobre el entorno local:
+
+| Búsqueda | Clasificación | Investigadores | Organizaciones | Publicaciones |
+|---|---|---|---|---|
+| `rios` | nombre | **4** — solo apellidos Ríos | oculta | oculta |
+| `prieto rios` | nombre | **1** — Prieto Ríos | oculta | oculta |
+| `matematicas` | temática | 30 matemáticos | 13 (incl. depto. de Matemáticas) | 30 |
+| `quimica` | temática | 19 químicos | 2 (incl. lab. de Bioquímica) | 30 |
+| `jurisprudencia` | temática | 30 | 11 (incl. Facultad) | 30 |
+
+Antes de estos cambios, `rios` mostraba 27 investigadores (24 de ruido) más
+organizaciones que solo aparecían "por rebote" —la *Facultad de Jurisprudencia*
+salía porque uno de sus miembros se apellida Ríos—, y `matematicas` mostraba solo
+2 investigadores.
+
+### Limitaciones conocidas
+
+- La clasificación depende de que la sección de Investigadores tenga resultados.
+  Si una búsqueda por nombre no devuelve ninguna persona, no se clasifica como
+  nombre y no se corta nada (degrada al comportamiento anterior, sin romperse).
+- Un apellido que además sea una palabra temática (p. ej. *León*, *Castillo*) se
+  tratará como nombre. Es el comportamiento razonable: Solr ya rankea primero las
+  coincidencias de nombre.
+- La separación perfecta entre identidad y publicaciones exigiría cambiar **qué
+  mete VIVO en `ALLTEXT` al indexar** (lado Java/RDF). Todo lo aquí descrito
+  trabaja sobre el índice tal como VIVO lo construye hoy.
 
 ---
 
