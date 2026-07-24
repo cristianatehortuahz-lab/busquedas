@@ -9,6 +9,42 @@ Este repositorio contiene la implementación nativa y modular del **Sistema de B
 
 ---
 
+## 🔄 Flujo en tiempo de ejecución
+
+```
+Navegador
+   │  el usuario busca "rios" → GET /search?querytext=rios
+   ▼
+PagedSearchController (Tomcat, webapps/HUBvivo115)
+   │  renderiza el armazón del dashboard (aún sin resultados)
+   ▼  search-pagedResults.ftl  +  dashboardSearch_hub_v19.js
+dashboardSearch_hub_v19.js (navegador)
+   │  una petición AJAX por cada categoría, en orden:
+   │  investigadores → organizaciones → programas → publicaciones
+   ▼  GET /search?querytext=rios&filters_category=…people
+VIVO → Solr (core vivocore, localhost:8983)
+   │  edismax: qf/pf priorizan el NOMBRE y hunden ALLTEXT
+   ▼  HTML con <ul class="searchhits">, YA ORDENADO por relevancia
+dashboardSearch_hub_v19.js (navegador)
+   │  parsea el HTML, aplica el corte por nombre y arma las tarjetas
+   ▼
+Dashboard con las 4 secciones renderizadas
+```
+
+**Puntos clave del flujo:**
+
+- La página llega **vacía**: el servidor solo manda el armazón y **todos los
+  resultados se piden por AJAX**, una petición por categoría.
+- **VIVO no expone el *score*** de Solr al navegador, pero **sí entrega los
+  resultados ordenados** por relevancia. El frontend se apoya en ese orden.
+- La relevancia se decide en **Solr** (ranking), no con filtros de texto en el
+  navegador. El frontend solo hace el afinado final. Ver
+  [`documentacion/05-relevancia-solr.md`](documentacion/05-relevancia-solr.md).
+- Las categorías se cargan **en orden**: investigadores va primero porque es
+  quien clasifica la consulta (nombre de persona vs. tema) para las demás.
+
+---
+
 ## ✨ Características Principales
 
 * **Buscadores Especializados (5-in-1):** Segmentación por perfiles (Supervisor, Partner), programas académicos, laboratorios y presentadores (speakers). Cada uno configurado con facetas (filtros) independientes.
